@@ -156,7 +156,6 @@ async function isSCProtected(chainId, dappAddr) {
 // Export the functions for module usage
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        setDevMode,
         securelyCallAutoAuth,
         securelyCall,
         getProviders,
