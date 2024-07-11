@@ -1,6 +1,6 @@
 {
   "name": "@securely.id/websdk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Securely Web SDK",
   "main": "src/securely.js",
   "scripts": {
@@ -17,11 +17,11 @@
     "websdk",
     "sdk"
   ],
-  "author": "Securely",
+  "author": "Securely <contact@securely.id>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/SecurelyFR/websdk/issues"
   },
-  "homepage": "https://github.com/SecurelyFR/websdk#readme",
+  "homepage": "https://securely.id",
   "dependencies": {}
 }
