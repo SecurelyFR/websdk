@@ -1,0 +1,27 @@
+{
+  "name": "@securely.id/websdk",
+  "version": "1.0.0",
+  "description": "Securely Web SDK",
+  "main": "src/securely.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SecurelyFR/websdk.git"
+  },
+  "keywords": [
+    "securely",
+    "api",
+    "wrapper",
+    "websdk",
+    "sdk"
+  ],
+  "author": "Securely",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SecurelyFR/websdk/issues"
+  },
+  "homepage": "https://github.com/SecurelyFR/websdk#readme",
+  "dependencies": {}
+}
