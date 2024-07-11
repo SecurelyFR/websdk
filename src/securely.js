@@ -19,7 +19,7 @@ function getAuthUrl() {
 }
 
 function getNextRequestId() {
-  return requestIdCounter++;
+    return requestIdCounter++;
 }
 
 function securelyAuth(methodId) {
