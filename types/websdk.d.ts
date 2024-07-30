@@ -1,5 +1,5 @@
 // websdk.d.ts
-declare module '@securely/websdk' {
+declare module '@securely.id/websdk' {
   function getProviders(methodId: string): Promise<any>;
   function securelyCallAutoAuth(method: string, endpoint: string, params: any[], methodId: string): Promise<any>;
   function securelyCall(method: string, endpoint: string, params: any, token?: string): Promise<any>;
