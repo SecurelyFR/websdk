@@ -3,6 +3,7 @@
   "version": "1.0.4",
   "description": "Securely Web SDK",
   "main": "src/securely.js",
+  "types": "types/websdk.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
