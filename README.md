@@ -12,4 +12,4 @@ npm install @securely.id/websdk
 
 ## License
 
-Securely Contracts is released under the [MIT License](LICENSE).
+Securely Web SDK is released under the [MIT License](LICENSE).
