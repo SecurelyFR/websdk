@@ -1,5 +1,6 @@
 // websdk.d.ts
 declare module '@securely.id/websdk' {
+  function setDevMode(value): void;
   function getProviders(methodId: string): Promise<any>;
   function securelyCallAutoAuth(method: string, endpoint: string, params: any[], methodId: string): Promise<any>;
   function securelyCall(method: string, endpoint: string, params: any, token?: string): Promise<any>;
@@ -15,6 +16,7 @@ declare module '@securely.id/websdk' {
   function isSCProtected(chainId: string, dappAddr: string): Promise<boolean>;
 
   export {
+    setDevMode,
     securelyCallAutoAuth,
     securelyCall,
     getProviders,

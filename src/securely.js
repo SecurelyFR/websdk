@@ -10,6 +10,10 @@ let devMode = document.currentScript?.getAttribute('devmode') ?? false;
 
 let requestIdCounter = 1;
 
+function setDevMode(value) {
+    devMode = value;
+}
+
 function getBaseUrl() {
     return (devMode) ? 'https://dev.securely.id' : 'https://prod.securely.id';
 }
@@ -156,6 +160,7 @@ async function isSCProtected(chainId, dappAddr) {
 // Export the functions for module usage
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+        setDevMode,
         securelyCallAutoAuth,
         securelyCall,
         getProviders,
