@@ -1,6 +1,8 @@
 // websdk.d.ts
 declare module '@securely.id/websdk' {
   function setDevMode(value): void;
+  function getFees(chainId: string, dappAddr: string): Promise<any>;
+  function getGrossAmount(chainId: string, dappAddr: string, amount: number): Promise<any>;
   function getProviders(methodId: string): Promise<any>;
   function securelyCallAutoAuth(method: string, endpoint: string, params: any[], methodId: string): Promise<any>;
   function securelyCall(method: string, endpoint: string, params: any, token?: string): Promise<any>;
@@ -17,6 +19,8 @@ declare module '@securely.id/websdk' {
 
   export {
     setDevMode,
+    getFees,
+    getGrossAmount,
     securelyCallAutoAuth,
     securelyCall,
     getProviders,

@@ -98,6 +98,14 @@ async function securelyCall(method, endpoint, params, token) {
     }
 }
 
+function getFees(chainId, dappAddr) {
+    return securelyCall('getFees', null, [chainId, dappAddr]);
+}
+
+function getGrossAmount(chainId, dappAddr, amount) {
+    return securelyCall('getGrossAmount', null, [chainId, dappAddr, amount.toString(16)]);
+}
+
 function getProviders(methodId) {
     return securelyCall('getProviders', 'onboarding', {methodId: methodId});
 }
