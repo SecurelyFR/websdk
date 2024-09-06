@@ -6,7 +6,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 //
 
-let devMode = document.currentScript?.getAttribute('devmode') ?? false;
+let devMode = document?.currentScript?.getAttribute('devmode') ?? false;
 
 let requestIdCounter = 1;
 
