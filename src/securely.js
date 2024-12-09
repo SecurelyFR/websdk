@@ -139,7 +139,7 @@ function validateErc20TransferWithDataCompliance(chainId, dappAddr, functionSele
 function validateGenericCallCompliance(chainId, dappAddr, functionSelector, srcAddr, amount, data) {
     amount = amount.toString(16);
     const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendGenericCall', chainId.toString(), [methodId, srcAddr, destAddr, amount, data], methodId);
+    return securelyCallAutoAuth('sendGenericCall', chainId.toString(), [methodId, srcAddr, amount, data], methodId);
 }
 
 function validateUser(chainId, dappAddr) {
