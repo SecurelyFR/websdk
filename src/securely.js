@@ -254,98 +254,36 @@ function computeMethodId(chainId, dappAddr, functionSelector = null) {
 }
 
 /**
- * Validates compliance for a native transfer.
+ * Validates compliance for any transaction. Specify either functionSelector and args, or data.
  * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {number} amount - The transfer amount in base units.
+ * @param {string} sender - The sender address.
+ * @param {string} dAppAddress - The dApp address.
+ * @param {number} value - The transaction value in base units.
+ * @param {Object|string} data - Either the tx data or the function selector and parameters.
+ * @param {List<Tuple<string, number>>} policyVariables.values - An array of (token, value) tuples for the policy
+ * @param {List<string>} policyVariables.screening - An array of addresses to screen for the policy
  * @return {Promise<Object>} - Resolves with the compliance validation result.
  */
-function validateEthTransferCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, amount) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendEthTransfer', chainId.toString(), [methodId, srcAddr, destAddr, amount, ""], methodId);
-}
-
-/**
- * Validates compliance for a native transfer with additional data.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {number} amount - The transfer amount in base units.
- * @param {string} data - Additional data for the transaction.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateEthTransferWithDataCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, amount, data) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendEthTransfer', chainId.toString(), [methodId, srcAddr, destAddr, amount, data], methodId);
-}
-
-/**
- * Validates compliance for an ERC20 token transfer.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {string} tokenAddr - The token contract address.
- * @param {number} amount - The transfer amount in base units.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateErc20TransferCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, tokenAddr, amount) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendErc20Transfer', chainId.toString(), [methodId, srcAddr, destAddr, tokenAddr, amount, ""], methodId);
-}
-
-/**
- * Validates compliance for an ERC20 token transfer with additional data.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {string} tokenAddr - The token contract address.
- * @param {number} amount - The transfer amount in base units.
- * @param {string} data - Additional data for the transaction.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateErc20TransferWithDataCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, tokenAddr, amount, data) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendErc20Transfer', chainId.toString(), [methodId, srcAddr, destAddr, tokenAddr, amount, data], methodId);
-}
-
-/**
- * Validates compliance for a generic blockchain call.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {number} amount - The amount in base units.
- * @param {string} data - Additional data for the call.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateGenericCallCompliance(chainId, dappAddr, functionSelector, srcAddr, amount, data) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendGenericCall', chainId.toString(), [methodId, srcAddr, amount, data], methodId);
+function validateCompliance(chainId, sender, dAppAddress, value, data, policyVariables) {
+    value = value.toString(16);
+    if (policyVariables && policyVariables.values)
+        policyVariables.values.array.forEach(element => { element.value = element.value.toString(16); });
+    const functionSelector = (typeof data === 'string' || data instanceof String) ?
+        data.replace(/^0x/, '').slice(0, 8) : data.functionSelector;
+    const methodId = computeMethodId(params.chainId, params.dappAddr, functionSelector);
+    const params = {chainId, sender, dAppAddress, value, data, policyVariables};
+    return securelyCallAutoAuth('validate', chainId.toString(), params, methodId);
 }
 
 /**
  * Validates a user's compliance status.
  * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
+ * @param {string} dAppAddress - The dApp address.
  * @return {Promise<Object>} - Resolves with the user's compliance validation result.
  */
-function validateUser(chainId, dappAddr) {
-    const methodId = computeMethodId(chainId, dappAddr);
-    return securelyCallAutoAuth('validateUser', chainId.toString(), [methodId], methodId);
+function validateUser(chainId, dAppAddress) {
+    const methodId = computeMethodId(chainId, dAppAddress);
+    return securelyCallAutoAuth('validate', chainId.toString(), {chainId, dAppAddress}, methodId);
 }
 
 /**
@@ -399,11 +337,7 @@ if (typeof module !== 'undefined' && module.exports) {
         securelyCallAutoAuth,
         securelyCall,
         getProviders,
-        validateEthTransferCompliance,
-        validateEthTransferWithDataCompliance,
-        validateErc20TransferCompliance,
-        validateErc20TransferWithDataCompliance,
-        validateGenericCallCompliance,
+        validateCompliance,
         validateUser,
         showPolicyById,
         showPolicy,
