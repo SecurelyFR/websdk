@@ -84,7 +84,9 @@ function securelyAuth(methodId, useIframe = true) {
                 event.stopPropagation();
             });
         } else {
-            const newWindow = window.open(`${getAuthUrl()}?methodId=${methodId}`,"Securely Authentication", "toolbar=no,scrollbars=no,location=no,statusbar=no,menubar=no,resizable=0,width=700,height=1000");
+            const newWindow = window.open(`${getAuthUrl()}?methodId=${methodId}`,
+                "Securely Authentication",
+                "toolbar=no,scrollbars=no,location=no,statusbar=no,menubar=no,resizable=0,width=700,height=1000");
             newWindow.focus();
         }
 
@@ -122,7 +124,7 @@ async function securelyCallAutoAuth(method, endpoint, params, methodId) {
                 break;
             }
         }
-        return await securelyCall(method, endpoint, params, token)
+        return await securelyCall(method, endpoint, params, token);
     } catch (error) {
         throw error;
     }
@@ -169,13 +171,13 @@ function getGrossAmount(chainId, dappAddr, amount) {
 }
 
 function getProviders(methodId) {
-    return securelyCall('getProviders', 'onboarding', {methodId: methodId});
+    return securelyCall('getProviders', 'onboarding', { methodId: methodId });
 }
 
-function computeMethodId(chainId, dappAddr, functionSelector=null) {
-    return (functionSelector !== null) ?
-        `${chainId}-${dappAddr.replace(/^0x/, '')}-${functionSelector.replace(/^0x/, '')}` :
-        `${chainId}-${dappAddr.replace(/^0x/, '')}`;
+function computeMethodId(chainId, dappAddr, functionSelector = null) {
+    return (functionSelector !== null)
+        ? `${chainId}-${dappAddr.replace(/^0x/, '')}-${functionSelector.replace(/^0x/, '')}`
+        : `${chainId}-${dappAddr.replace(/^0x/, '')}`;
 }
 
 function validateEthTransferCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, amount) {
@@ -210,7 +212,7 @@ function validateUser(chainId, dappAddr) {
 }
 
 function showPolicyById(id, formatted = true) {
-    return securelyCall('showPolicy', '', {id: id, formatted: formatted});
+    return securelyCall('showPolicy', '', { id: id, formatted: formatted });
 }
 
 function showPolicy(chainId, dappAddr, functionSelector, formatted = true) {
@@ -219,12 +221,12 @@ function showPolicy(chainId, dappAddr, functionSelector, formatted = true) {
 }
 
 function listPolicies(chainId, dappAddr) {
-    return securelyCall('listPolicies', '', {chainId: chainId, dappAddr: dappAddr});
+    return securelyCall('listPolicies', '', { chainId: chainId, dappAddr: dappAddr });
 }
 
 async function isSCProtected(chainId, dappAddr) {
-    res = await securelyCall('listPolicies', '', {chainId: chainId, dappAddr: dappAddr});
-    return (res.result.length !== 0)
+    const res = await securelyCall('listPolicies', '', { chainId: chainId, dappAddr: dappAddr });
+    return res.result.length !== 0;
 }
 
 // Export the functions for module usage
