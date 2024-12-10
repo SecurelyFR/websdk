@@ -26,17 +26,79 @@ function getNextRequestId() {
     return requestIdCounter++;
 }
 
-function securelyAuth(methodId) {
+function securelyAuth(methodId, useIframe = true) {
     return new Promise((resolve) => {
-        const newWindow = window.open(`${getAuthUrl()}?methodId=${methodId}`,"Securely Authentication", "toolbar=no,scrollbars=no,location=no,statusbar=no,menubar=no,resizable=0,width=700,height=1000");
-        newWindow.focus();
+        if (useIframe) {
+            const overlay = document.createElement('div');
+            const iframe = document.createElement('iframe');
+
+            const style = document.createElement('style');
+            style.textContent = `
+              .auth-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+              }
+
+              .auth-iframe {
+                border: none;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                z-index: 1001;
+                width: 700px;
+                height: 1000px;
+              }
+
+              /* No box for small screens */
+              @media (max-width: 700px), (max-height: 1000px) {
+                .auth-iframe {
+                  width: 100vw;
+                  height: 100vh;
+                  border-radius: 0;
+                }
+              }
+            `;
+
+            document.head.appendChild(style);
+
+            overlay.className = 'auth-overlay';
+            iframe.className = 'auth-iframe';
+
+            iframe.src = `${getAuthUrl()}?methodId=${methodId}`;
+            iframe.sandbox = "allow-scripts allow-same-origin allow-forms";
+
+            /* Allow Webauthn within iframe */
+            iframe.allow = "publickey-credentials-get; publickey-credentials-create";
+
+            overlay.appendChild(iframe);
+            document.body.appendChild(overlay);
+
+            iframe.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+        } else {
+            const newWindow = window.open(`${getAuthUrl()}?methodId=${methodId}`,"Securely Authentication", "toolbar=no,scrollbars=no,location=no,statusbar=no,menubar=no,resizable=0,width=700,height=1000");
+            newWindow.focus();
+        }
 
         function messageHandler(event) {
             if (event.origin === getAuthUrl()) {
                 window.removeEventListener('message', messageHandler);
 
+                if (useIframe) {
+                    const overlay = document.querySelector('.auth-overlay');
+                    document.body.removeChild(overlay);
+                }
+
                 const receivedData = event.data;
-                console.log('Received data from the new window:', receivedData);
+                console.log('Received data from Securely Auth:', receivedData);
 
                 resolve(receivedData);
             }
