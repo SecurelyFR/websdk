@@ -210,6 +210,7 @@ async function securelyCall(method, endpoint, params, token) {
 
 /**
  * Fetches fee information from Securely API.
+ * @deprecated This method is deprecated and will be removed in future versions.
  * @param {number} chainId - The blockchain chain ID.
  * @param {string} dappAddr - The dApp address.
  * @return {Promise<Object>} - Resolves with fee data.
@@ -220,6 +221,7 @@ function getFees(chainId, dappAddr) {
 
 /**
  * Calculates the gross amount including fees.
+ * @deprecated This method is deprecated and will be removed in future versions.
  * @param {number} chainId - The blockchain chain ID.
  * @param {string} dappAddr - The dApp address.
  * @param {number} amount - The initial amount in base units.
