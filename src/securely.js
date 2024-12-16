@@ -228,7 +228,7 @@ function getFees(chainId, dappAddr) {
  * @return {Promise<Object>} - Resolves with the gross amount including fees.
  */
 function getGrossAmount(chainId, dappAddr, amount) {
-    return securelyCall('getGrossAmount', null, [chainId, dappAddr, amount.toString(16)]);
+    return securelyCall('getGrossAmount', null, [chainId, dappAddr, amount.toString()]);
 }
 
 /**
@@ -260,19 +260,24 @@ function computeMethodId(chainId, dappAddr, functionSelector = null) {
  * @param {string} dAppAddress - The dApp address.
  * @param {number} value - The transaction value in base units.
  * @param {Object|string} data - Either the tx data or the function selector and parameters.
- * @param {List<Tuple<string, number>>} policyVariables.values - An array of (token, value) tuples for the policy
- * @param {List<string>} policyVariables.screening - An array of addresses to screen for the policy
+ * @param {List<Tuple<string, number>>} policyParameters.amounts - An array of (token, value) tuples for the policy
+ * @param {List<string>} policyParameters.wallets - An array of wallet addresses for the policy
  * @return {Promise<Object>} - Resolves with the compliance validation result.
  */
-function validateCompliance(chainId, sender, dAppAddress, value, data, policyVariables) {
-    value = value.toString(16);
-    if (policyVariables && policyVariables.values)
-        policyVariables.values.array.forEach(element => { element.value = element.value.toString(16); });
+function validateCompliance(chainId, sender, dAppAddress, value, data, policyParameters) {
+    if (value instanceof BigInt)
+        value = value.toString();
+    if (chainId instanceof BigInt)
+        chainId = chainId.toString();
+    if (policyParameters && policyParameters.amounts)
+        policyParameters.amounts.filter(e => e instanceof BigInt).forEach(e => { e.value = e.value.toString(); });
     const functionSelector = (typeof data === 'string' || data instanceof String) ?
         data.replace(/^0x/, '').slice(0, 8) : data.functionSelector;
-    const methodId = computeMethodId(params.chainId, params.dappAddr, functionSelector);
-    const params = {chainId, sender, dAppAddress, value, data, policyVariables};
-    return securelyCallAutoAuth('validate', chainId.toString(), params, methodId);
+    const methodId = computeMethodId(chainId, dAppAddress, functionSelector);
+    const params = typeof data === 'string' ?
+        {chainId, sender, dAppAddress, value, data, policyParameters}
+        : {chainId, sender, dAppAddress, value, functionSelector, args: data.args, policyParameters};
+    return securelyCallAutoAuth('validate', chainId, params, methodId);
 }
 
 /**
