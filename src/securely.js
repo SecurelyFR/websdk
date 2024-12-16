@@ -217,29 +217,6 @@ async function securelyCall(method, endpoint, params, token) {
 }
 
 /**
- * Fetches fee information from Securely API.
- * @deprecated This method is deprecated and will be removed in future versions.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @return {Promise<Object>} - Resolves with fee data.
- */
-function getFees(chainId, dappAddr) {
-    return securelyCall('getFees', null, [chainId, dappAddr]);
-}
-
-/**
- * Calculates the gross amount including fees.
- * @deprecated This method is deprecated and will be removed in future versions.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {number} amount - The initial amount in base units.
- * @return {Promise<Object>} - Resolves with the gross amount including fees.
- */
-function getGrossAmount(chainId, dappAddr, amount) {
-    return securelyCall('getGrossAmount', null, [chainId, dappAddr, amount]);
-}
-
-/**
  * Retrieves the list of authentication providers for a specific method.
  * @param {string} methodId - The method ID.
  * @return {Promise<Object>} - Resolves with the list of providers.
