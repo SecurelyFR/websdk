@@ -145,27 +145,22 @@ function securelyAuth(methodId, useIframe = true) {
  * @param {string} method - The API method name.
  * @param {string} endpoint - The API endpoint.
  * @param {Array|Object} params - Parameters for the API call.
- * @param {string} methodId - The method ID for authentication.
+ * @param {number} chainId - The blockchain chain ID.
+ * @param {string} dAppAddress - The dApp address.
+ * @param {string} [functionSelector=''] - The function selector (optional).
  * @return {Promise<Object>} - Resolves with API response.
  */
-async function securelyCallAutoAuth(method, endpoint, params, methodId) {
-    try {
-        /* Detect if authentication is required */
-        const providers = await getProviders(methodId);
-        //console.log(providers);
-        let token = null;
-        for (const provider of providers.result) {
-            if (provider.type.toLowerCase() === "auth" && provider.name.toLowerCase() === "webauthn") {
-                /* Authentication required (WebauthN only for now) */
-                const data = await securelyAuth(methodId);
-                token = data.token;
-                break;
-            }
-        }
-        return await securelyCall(method, endpoint, params, token);
-    } catch (error) {
-        throw error;
-    }
+async function securelyCallAutoAuth(method, endpoint, params, chainId, dAppAddress, functionSelector='') {
+    const methodId = computeMethodId(chainId, dAppAddress, functionSelector);
+    // Will call securelyAuth if authentication is required. Only webauthn is supported for now
+    return await securelyCall(
+        method,
+        endpoint,
+        params,
+        (await getProviders(methodId)).result.filter(
+            p => p.type.toLowerCase() === "auth" && p.name.toLowerCase() === "webauthn"
+        ).length !== 0 ? (await securelyAuth(methodId)).token : null
+    );
 }
 
 /**
@@ -177,30 +172,34 @@ async function securelyCallAutoAuth(method, endpoint, params, methodId) {
  * @return {Promise<Object>} - Resolves with API response.
  */
 async function securelyCall(method, endpoint, params, token) {
+    function deepConvertBigIntToString(obj) {
+        if (typeof obj === 'bigint')
+            return obj.toString();
+        if (Array.isArray(obj))
+            return obj.map(deepConvertBigIntToString);
+        if (obj !== null && typeof obj === 'object')
+            return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, deepConvertBigIntToString(v)]));
+        return obj;
+    }
+
+    const resource = `${getBaseUrl()}/api/v0/${endpoint}`.replace(/\/$/, '');
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify(deepConvertBigIntToString({
+            'jsonrpc': '2.0',
+            'method': method,
+            'params': params,
+            'id': getNextRequestId(),
+        }))
+    };
     try {
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-        if (token != null) {
-            headers['Authorization'] = 'Bearer ' + token;
-        }
-        const requestOptions = {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({
-                'jsonrpc': '2.0',
-                'method': method,
-                'params': params,
-                'id': getNextRequestId(),
-            })
-        };
-        if (endpoint != null && endpoint.length !== 0) {
-            endpoint = "/" + endpoint;
-        }
-        const response = await fetch(`${getBaseUrl()}/api/v0${endpoint}`, requestOptions);
-        if (!response.ok) {
+        const response = await fetch(resource, options);
+        if (!response.ok)
             throw new Error(response.error);
-        }
         return await response.json();
     } catch (error) {
         console.error('Failed to perform Securely call %s:', method, error);
@@ -228,7 +227,7 @@ function getFees(chainId, dappAddr) {
  * @return {Promise<Object>} - Resolves with the gross amount including fees.
  */
 function getGrossAmount(chainId, dappAddr, amount) {
-    return securelyCall('getGrossAmount', null, [chainId, dappAddr, amount.toString(16)]);
+    return securelyCall('getGrossAmount', null, [chainId, dappAddr, amount]);
 }
 
 /**
@@ -237,115 +236,48 @@ function getGrossAmount(chainId, dappAddr, amount) {
  * @return {Promise<Object>} - Resolves with the list of providers.
  */
 function getProviders(methodId) {
-    return securelyCall('getProviders', 'onboarding', { methodId: methodId });
+    return securelyCall('getProviders', 'onboarding', { methodId });
 }
 
 /**
  * Computes a unique method ID based on the input parameters.
  * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string|null} [functionSelector=null] - The function selector (optional).
+ * @param {string} dAppAddress - The dApp address.
+ * @param {string} [functionSelector=''] - The function selector (optional).
  * @return {string} - The computed method ID.
  */
-function computeMethodId(chainId, dappAddr, functionSelector = null) {
-    return (functionSelector !== null)
-        ? `${chainId}-${dappAddr.replace(/^0x/, '')}-${functionSelector.replace(/^0x/, '')}`
-        : `${chainId}-${dappAddr.replace(/^0x/, '')}`;
+function computeMethodId(chainId, dAppAddress, functionSelector = '') {
+    return `${chainId}-${dAppAddress.replace(/^0x/, '')}-${functionSelector.replace(/^0x/, '')}`.replace(/-$/, '');
 }
 
 /**
- * Validates compliance for a native transfer.
+ * Validates compliance for any transaction. Specify either functionSelector and args, or data.
  * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {number} amount - The transfer amount in base units.
+ * @param {string} sender - The sender address.
+ * @param {string} dAppAddress - The dApp address.
+ * @param {number} value - The transaction value in base units.
+ * @param {Object|string} data - Either the tx data or the function selector and parameters.
+ * @param {List<Tuple<string, number>>} policyParameters.amounts - An array of (token, value) tuples for the policy
+ * @param {List<string>} policyParameters.wallets - An array of wallet addresses for the policy
  * @return {Promise<Object>} - Resolves with the compliance validation result.
  */
-function validateEthTransferCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, amount) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendEthTransfer', chainId.toString(), [methodId, srcAddr, destAddr, amount, ""], methodId);
-}
-
-/**
- * Validates compliance for a native transfer with additional data.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {number} amount - The transfer amount in base units.
- * @param {string} data - Additional data for the transaction.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateEthTransferWithDataCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, amount, data) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendEthTransfer', chainId.toString(), [methodId, srcAddr, destAddr, amount, data], methodId);
-}
-
-/**
- * Validates compliance for an ERC20 token transfer.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {string} tokenAddr - The token contract address.
- * @param {number} amount - The transfer amount in base units.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateErc20TransferCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, tokenAddr, amount) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendErc20Transfer', chainId.toString(), [methodId, srcAddr, destAddr, tokenAddr, amount, ""], methodId);
-}
-
-/**
- * Validates compliance for an ERC20 token transfer with additional data.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {string} destAddr - The destination address.
- * @param {string} tokenAddr - The token contract address.
- * @param {number} amount - The transfer amount in base units.
- * @param {string} data - Additional data for the transaction.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateErc20TransferWithDataCompliance(chainId, dappAddr, functionSelector, srcAddr, destAddr, tokenAddr, amount, data) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendErc20Transfer', chainId.toString(), [methodId, srcAddr, destAddr, tokenAddr, amount, data], methodId);
-}
-
-/**
- * Validates compliance for a generic blockchain call.
- * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
- * @param {string} srcAddr - The source address.
- * @param {number} amount - The amount in base units.
- * @param {string} data - Additional data for the call.
- * @return {Promise<Object>} - Resolves with the compliance validation result.
- */
-function validateGenericCallCompliance(chainId, dappAddr, functionSelector, srcAddr, amount, data) {
-    amount = amount.toString(16);
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return securelyCallAutoAuth('sendGenericCall', chainId.toString(), [methodId, srcAddr, amount, data], methodId);
+function validateCompliance(chainId, sender, dAppAddress, value, data, policyParameters) {
+    const dataIsEncoded = typeof data === 'string' || data instanceof String;
+    const functionSelector = dataIsEncoded ? data.replace(/^0x/, '').slice(0, 8) : data.functionSelector;
+    const params = dataIsEncoded ?
+        {chainId, sender, dAppAddress, value, data, policyParameters}
+        : {chainId, sender, dAppAddress, value, functionSelector, args: data.args, policyParameters};
+    return securelyCallAutoAuth('validate', chainId, params, chainId, dAppAddress, functionSelector);
 }
 
 /**
  * Validates a user's compliance status.
  * @param {number} chainId - The blockchain chain ID.
- * @param {string} dappAddr - The dApp address.
+ * @param {string} dAppAddress - The dApp address.
  * @return {Promise<Object>} - Resolves with the user's compliance validation result.
  */
-function validateUser(chainId, dappAddr) {
-    const methodId = computeMethodId(chainId, dappAddr);
-    return securelyCallAutoAuth('validateUser', chainId.toString(), [methodId], methodId);
+function validateUser(chainId, dAppAddress) {
+    return securelyCallAutoAuth('validate', `${chainId}`, { chainId, dAppAddress }, chainId, dAppAddress);
 }
 
 /**
@@ -355,7 +287,7 @@ function validateUser(chainId, dappAddr) {
  * @return {Promise<Object>} - Resolves with the policy data.
  */
 function showPolicyById(id, formatted = true) {
-    return securelyCall('showPolicy', '', { id: id, formatted: formatted });
+    return securelyCall('showPolicy', '', { id, formatted });
 }
 
 /**
@@ -367,8 +299,7 @@ function showPolicyById(id, formatted = true) {
  * @return {Promise<Object>} - Resolves with the policy data.
  */
 function showPolicy(chainId, dappAddr, functionSelector, formatted = true) {
-    const methodId = computeMethodId(chainId, dappAddr, functionSelector);
-    return showPolicyById(methodId, formatted);
+    return showPolicyById(computeMethodId(chainId, dappAddr, functionSelector), formatted);
 }
 
 /**
@@ -378,7 +309,7 @@ function showPolicy(chainId, dappAddr, functionSelector, formatted = true) {
  * @return {Promise<Object>} - Resolves with the list of policies.
  */
 function listPolicies(chainId, dappAddr) {
-    return securelyCall('listPolicies', '', { chainId: chainId, dappAddr: dappAddr });
+    return securelyCall('listPolicies', '', { chainId, dappAddr });
 }
 
 /**
@@ -388,8 +319,7 @@ function listPolicies(chainId, dappAddr) {
  * @return {Promise<boolean>} - Resolves with true if protected, false otherwise.
  */
 async function isSCProtected(chainId, dappAddr) {
-    const res = await securelyCall('listPolicies', '', { chainId: chainId, dappAddr: dappAddr });
-    return res.result.length !== 0;
+    return (await securelyCall('listPolicies', '', { chainId, dappAddr })).result.length !== 0;
 }
 
 // Export the functions for module usage
@@ -399,11 +329,7 @@ if (typeof module !== 'undefined' && module.exports) {
         securelyCallAutoAuth,
         securelyCall,
         getProviders,
-        validateEthTransferCompliance,
-        validateEthTransferWithDataCompliance,
-        validateErc20TransferCompliance,
-        validateErc20TransferWithDataCompliance,
-        validateGenericCallCompliance,
+        validateCompliance,
         validateUser,
         showPolicyById,
         showPolicy,
