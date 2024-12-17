@@ -7,10 +7,16 @@
 //
 
 /**
- * Development mode flag. Determines whether to use development or production endpoints.
- * @type {boolean}
+ * The backend subdomain to use. Determines whether to use local, development or production endpoints.
+ * @type {string}
  */
-let devMode = document?.currentScript?.getAttribute('devmode') ?? false;
+let backend = document?.currentScript?.getAttribute('devmode') ? 'dev' : 'prod';
+
+/**
+ * The backend TCP port to use. Needs to be overriden when using a local backend
+ * @type {number}
+ */
+let backendPort = 443;
 
 /**
  * Counter for generating unique request IDs.
@@ -20,10 +26,12 @@ let requestIdCounter = 1;
 
 /**
  * Sets the development mode.
- * @param {boolean} value - True to enable development mode, false to use production.
+ * @param {string} subdomain - 'local' to use local, 'dev' to use dev, 'prod' tu use prod
+ * @param {number} [port=443] - the TCP port tu use (optional)
  */
-function setDevMode(value) {
-    devMode = value;
+function setBackend(subdomain, port=443) {
+    backend = subdomain;
+    backendPort = port;
 }
 
 /**
@@ -31,7 +39,7 @@ function setDevMode(value) {
  * @return {string} - The base URL based on the current mode.
  */
 function getBaseUrl() {
-    return (devMode) ? 'https://dev.securely.id' : 'https://prod.securely.id';
+    return `http${backendPort == 443 ? 's' : ''}://${backend}.securely.id${backendPort == 443 || backendPort == 80 ? '' : `:${backendPort}`}`;
 }
 
 /**
@@ -39,7 +47,8 @@ function getBaseUrl() {
  * @return {string} - The authentication URL based on the current mode.
  */
 function getAuthUrl() {
-    return (devMode) ? 'https://auth-dev.securely.id' : 'https://auth.securely.id';
+    const auth = `auth-${backend}`.replace(/-$/, '')
+    return `http${backendPort == 443 ? 's' : ''}://${auth}.securely.id${backendPort == 443 || backendPort == 80 ? '' : `:${backendPort}`}`;
 }
 
 /**
@@ -325,7 +334,7 @@ async function isSCProtected(chainId, dappAddr) {
 // Export the functions for module usage
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        setDevMode,
+        setBackend,
         securelyCallAutoAuth,
         securelyCall,
         getProviders,
