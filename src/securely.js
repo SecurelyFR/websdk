@@ -7,16 +7,16 @@
 //
 
 /**
- * The backend subdomain to use. Determines whether to use local, development or production endpoints.
+ * The backend URL to use. Determines whether to use local, development or production endpoints.
  * @type {string}
  */
-let backend = document?.currentScript?.getAttribute('devmode') ? 'dev' : 'prod';
+let backendUrl = 'https://prod.securely.id';
 
 /**
- * The backend TCP port to use. Needs to be overriden when using a local backend
- * @type {number}
+ * The auth URL to use. Determines whether to use local, development or production endpoints.
+ * @type {string}
  */
-let backendPort = 443;
+let authUrl = 'https://auth.securely.id';
 
 /**
  * Counter for generating unique request IDs.
@@ -25,30 +25,29 @@ let backendPort = 443;
 let requestIdCounter = 1;
 
 /**
- * Sets the development mode.
- * @param {string} subdomain - 'local' to use local, 'dev' to use dev, 'prod' tu use prod
- * @param {number} [port=443] - the TCP port tu use (optional)
+ * Sets the backend URL.
+ * @param {string} url - The backend URL to use.
  */
-function setBackend(subdomain, port=443) {
-    backend = subdomain;
-    backendPort = port;
+function setBackendUrl(url) {
+    backendUrl = url;
 }
 
 /**
- * Returns the base URL for Securely API.
- * @return {string} - The base URL based on the current mode.
+ * Sets the auth URL.
+ * @param {string} url - The auth URL to use.
  */
-function getBaseUrl() {
-    return `http${backendPort == 443 ? 's' : ''}://${backend}.securely.id${backendPort == 443 || backendPort == 80 ? '' : `:${backendPort}`}`;
+function setAuthUrl(url) {
+    authUrl = url;
 }
 
 /**
- * Returns the authentication URL for Securely API.
- * @return {string} - The authentication URL based on the current mode.
+ * Sets the backend URL to use the dev environment.
+ * This is a convenience function for testing.
+ * Note: This function should not be used in production.
  */
-function getAuthUrl() {
-    const auth = `auth-${backend}`.replace(/-$/, '')
-    return `http${backendPort == 443 ? 's' : ''}://${auth}.securely.id${backendPort == 443 || backendPort == 80 ? '' : `:${backendPort}`}`;
+function setDevMode() {
+    backendUrl = 'https://dev.securely.id';
+    authUrl = 'https://auth-dev.securely.id';
 }
 
 /**
@@ -110,7 +109,7 @@ function securelyAuth(methodId, useIframe = true) {
             overlay.className = 'auth-overlay';
             iframe.className = 'auth-iframe';
 
-            iframe.src = `${getAuthUrl()}?methodId=${methodId}`;
+            iframe.src = `${authUrl}?methodId=${methodId}`;
             iframe.sandbox = "allow-scripts allow-same-origin allow-forms";
 
             /* Allow Webauthn within iframe */
@@ -123,14 +122,14 @@ function securelyAuth(methodId, useIframe = true) {
                 event.stopPropagation();
             });
         } else {
-            const newWindow = window.open(`${getAuthUrl()}?methodId=${methodId}`,
+            const newWindow = window.open(`${authUrl}?methodId=${methodId}`,
                 "Securely Authentication",
                 "toolbar=no,scrollbars=no,location=no,statusbar=no,menubar=no,resizable=0,width=700,height=1000");
             newWindow.focus();
         }
 
         function messageHandler(event) {
-            if (event.origin === getAuthUrl()) {
+            if (event.origin === authUrl) {
                 window.removeEventListener('message', messageHandler);
 
                 if (useIframe) {
@@ -191,7 +190,7 @@ async function securelyCall(method, endpoint, params, token) {
         return obj;
     }
 
-    const resource = `${getBaseUrl()}/api/v0/${endpoint}`.replace(/\/$/, '');
+    const resource = `${backendUrl}/api/v0/${endpoint}`.replace(/\/$/, '');
     const options = {
         method: 'POST',
         headers: {
@@ -311,7 +310,9 @@ async function isSCProtected(chainId, dappAddr) {
 // Export the functions for module usage
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        setBackend,
+        setBackendUrl,
+        setAuthUrl,
+        setDevMode,
         securelyCallAutoAuth,
         securelyCall,
         getProviders,
