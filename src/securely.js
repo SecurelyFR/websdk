@@ -232,7 +232,9 @@ function getProviders(methodId) {
  * @return {string} - The computed method ID.
  */
 function computeMethodId(chainId, dAppAddress, functionSelector = '') {
-    return `${chainId}-${dAppAddress.replace(/^0x/, '')}-${functionSelector.replace(/^0x/, '')}`.replace(/-$/, '');
+    dAppAddress = dAppAddress.replace(/^0x/, '');
+    functionSelector = functionSelector.replace(/^0x/, '');
+    return `${chainId}-${dAppAddress}-${functionSelector}`.replace(/-$/, '').toLowerCase();
 }
 
 /**
