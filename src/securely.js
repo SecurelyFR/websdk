@@ -60,12 +60,15 @@ function getNextRequestId() {
 
 /**
  * Initiates Securely authentication flow.
- * @param {string} methodId - The method ID for the authentication.
+ * @param {number} chainId - The blockchain chain ID.
+ * @param {string} dAppAddress - The dApp address.
+ * @param {string} [functionSelector=''] - The function selector (optional).
  * @param {boolean} [useIframe=true] - Whether to use an iframe or a new window for the flow.
  * @return {Promise<Object>} - Resolves with authentication data.
  */
-function securelyAuth(methodId, useIframe = true) {
+function securelyAuth(chainId, dAppAddress, functionSelector='', useIframe = true) {
     return new Promise((resolve, reject) => {
+        let fullAuth = `${authUrl}?chainId=${chainId}&dAppAddress=${dAppAddress}&functionSelector=${functionSelector}`;
         if (useIframe) {
             const overlay = document.createElement('div');
             const container = document.createElement('div');
@@ -148,7 +151,7 @@ function securelyAuth(methodId, useIframe = true) {
             closeButton.className = 'auth-close-button';
             closeButton.innerHTML = '&times;'; // X symbol for the button
 
-            iframe.src = `${authUrl}?methodId=${methodId}`;
+            iframe.src = fullAuth;
             iframe.sandbox = "allow-scripts allow-same-origin allow-forms";
 
             /* Allow Webauthn within iframe */
@@ -168,7 +171,7 @@ function securelyAuth(methodId, useIframe = true) {
                 event.stopPropagation();
             });
         } else {
-            const newWindow = window.open(`${authUrl}?methodId=${methodId}`,
+            const newWindow = window.open(fullAuth,
                 "Securely Authentication",
                 "toolbar=no,scrollbars=no,location=no,statusbar=no,menubar=no,resizable=0,width=700,height=1000");
             newWindow.focus();
@@ -205,15 +208,14 @@ function securelyAuth(methodId, useIframe = true) {
  * @return {Promise<Object>} - Resolves with API response.
  */
 async function securelyCallAutoAuth(method, endpoint, params, chainId, dAppAddress, functionSelector='') {
-    const methodId = computeMethodId(chainId, dAppAddress, functionSelector);
     // Will call securelyAuth if authentication is required. Only webauthn is supported for now
     return await securelyCall(
         method,
         endpoint,
         params,
-        (await getProviders(methodId)).result.filter(
+        (await getProviders(chainId, dAppAddress, functionSelector)).result.filter(
             p => p.type.toLowerCase() === "auth" && p.name.toLowerCase() === "webauthn"
-        ).length !== 0 ? (await securelyAuth(methodId)).token : null
+        ).length !== 0 ? (await securelyAuth(chainId, dAppAddress, functionSelector)).token : null
     );
 }
 
@@ -263,24 +265,13 @@ async function securelyCall(method, endpoint, params, token) {
 
 /**
  * Retrieves the list of authentication providers for a specific method.
- * @param {string} methodId - The method ID.
- * @return {Promise<Object>} - Resolves with the list of providers.
- */
-function getProviders(methodId) {
-    return securelyCall('getProviders', 'onboarding', { methodId });
-}
-
-/**
- * Computes a unique method ID based on the input parameters.
  * @param {number} chainId - The blockchain chain ID.
  * @param {string} dAppAddress - The dApp address.
  * @param {string} [functionSelector=''] - The function selector (optional).
- * @return {string} - The computed method ID.
+ * @return {Promise<Object>} - Resolves with the list of providers.
  */
-function computeMethodId(chainId, dAppAddress, functionSelector = '') {
-    dAppAddress = dAppAddress.replace(/^0x/, '');
-    functionSelector = functionSelector.replace(/^0x/, '');
-    return `${chainId}-${dAppAddress}-${functionSelector}`.replace(/-$/, '').toLowerCase();
+function getProviders(chainId, dAppAddress, functionSelector='') {
+    return securelyCall('getProviders', 'onboarding', { chainId, dAppAddress, functionSelector });
 }
 
 /**
@@ -314,25 +305,15 @@ function validateUser(chainId, dAppAddress) {
 }
 
 /**
- * Fetches a specific policy by its ID.
- * @param {string} id - The policy ID.
- * @param {boolean} [formatted=true] - Whether to return the policy in a formatted structure.
- * @return {Promise<Object>} - Resolves with the policy data.
- */
-function showPolicyById(id, formatted = true) {
-    return securelyCall('showPolicy', '', { id, formatted });
-}
-
-/**
  * Fetches a policy based on chain ID, dApp address, and function selector.
  * @param {number} chainId - The blockchain chain ID.
  * @param {string} dappAddr - The dApp address.
- * @param {string} functionSelector - The function selector.
+ * @param {string} [functionSelector=''] - The function selector (optional).
  * @param {boolean} [formatted=true] - Whether to return the policy in a formatted structure.
  * @return {Promise<Object>} - Resolves with the policy data.
  */
-function showPolicy(chainId, dappAddr, functionSelector, formatted = true) {
-    return showPolicyById(computeMethodId(chainId, dappAddr, functionSelector), formatted);
+function showPolicy(chainId, dappAddr, functionSelector='', formatted = true) {
+    return securelyCall('showPolicy', '', { chainId, dappAddr, functionSelector, formatted })
 }
 
 /**
@@ -366,7 +347,6 @@ if (typeof module !== 'undefined' && module.exports) {
         getProviders,
         validateCompliance,
         validateUser,
-        showPolicyById,
         showPolicy,
         listPolicies,
         isSCProtected,
