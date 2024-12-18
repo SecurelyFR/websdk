@@ -65,10 +65,12 @@ function getNextRequestId() {
  * @return {Promise<Object>} - Resolves with authentication data.
  */
 function securelyAuth(methodId, useIframe = true) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         if (useIframe) {
             const overlay = document.createElement('div');
+            const container = document.createElement('div');
             const iframe = document.createElement('iframe');
+            const closeButton = document.createElement('button');
 
             const style = document.createElement('style');
             style.textContent = `
@@ -85,11 +87,19 @@ function securelyAuth(methodId, useIframe = true) {
                 align-items: center;
               }
 
+              .auth-container {
+                position: relative;
+                border-radius: 20px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+                z-index: 2001;
+                width: 700px;
+                height: 1000px;
+              }
+
               .auth-iframe {
                 border: none;
-                border-radius: 15px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-                z-index: 1001;
+                box-sizing: border-box;
                 width: 700px;
                 height: 1000px;
               }
@@ -99,15 +109,44 @@ function securelyAuth(methodId, useIframe = true) {
                 .auth-iframe {
                   width: 100vw;
                   height: 100vh;
+                }
+                .auth-container {
                   border-radius: 0;
                 }
+              }
+
+              .auth-close-button {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                color: grey;
+                border: none;
+                background: none;
+                font-size: 20px;
+                font-weight: bold;
+                cursor: pointer;
+                z-index: 2002;
+                padding: 0;
+                outline: none;
+              }
+
+              .auth-close-button:hover {
+                color: black;
+                background: none;
+              }
+
+              .auth-close-button:focus {
+                outline: none;
               }
             `;
 
             document.head.appendChild(style);
 
             overlay.className = 'auth-overlay';
+            container.className = 'auth-container';
             iframe.className = 'auth-iframe';
+            closeButton.className = 'auth-close-button';
+            closeButton.innerHTML = '&times;'; // X symbol for the button
 
             iframe.src = `${authUrl}?methodId=${methodId}`;
             iframe.sandbox = "allow-scripts allow-same-origin allow-forms";
@@ -115,8 +154,15 @@ function securelyAuth(methodId, useIframe = true) {
             /* Allow Webauthn within iframe */
             iframe.allow = "publickey-credentials-get; publickey-credentials-create";
 
-            overlay.appendChild(iframe);
+            container.appendChild(iframe);
+            container.appendChild(closeButton);
+            overlay.appendChild(container);
             document.body.appendChild(overlay);
+
+            closeButton.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+                reject(new Error('Authentication canceled by user.'));
+            });
 
             iframe.addEventListener('click', (event) => {
                 event.stopPropagation();
