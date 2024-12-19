@@ -206,17 +206,40 @@ function securelyAuth(methodId, useIframe = true) {
  * @param {string} [functionSelector=''] - The function selector (optional).
  * @return {Promise<Object>} - Resolves with API response.
  */
-async function securelyCallAutoAuth(method, endpoint, params, chainId, dAppAddress, functionSelector='') {
+async function securelyCallAutoAuth(method, endpoint, params, chainId, dAppAddress, functionSelector = '') {
     const methodId = computeMethodId(chainId, dAppAddress, functionSelector);
-    // Will call securelyAuth if authentication is required. Only webauthn is supported for now
-    return await securelyCall(
-        method,
-        endpoint,
-        params,
-        (await getProviders(methodId)).result.filter(
+
+    try {
+        // Get providers and check if authentication is required
+        const providers = await getProviders(methodId);
+        const requiresAuth = providers.result.some(
+            // Only webauthn is supported for now
             p => p.type.toLowerCase() === "auth" && p.name.toLowerCase() === "webauthn"
-        ).length !== 0 ? (await securelyAuth(methodId)).token : null
-    );
+        );
+
+        let token = null;
+        if (requiresAuth) {
+            try {
+                const authData = await securelyAuth(methodId);
+
+                // Validate the received authentication data structure
+                if (!authData || typeof authData.token !== 'string') {
+                    throw new Error("Invalid authentication data received.");
+                }
+
+                token = authData.token;
+            } catch (authError) {
+                console.error(`Authentication error: ${authError.message}`);
+                throw new Error("Authentication failed. Please try again.");
+            }
+        }
+
+        // Make the actual API call
+        return await securelyCall(method, endpoint, params, token);
+    } catch (error) {
+        console.error(`Error in securelyCallAutoAuth: ${error.message}`);
+        throw error; // Re-throw the error to propagate it to the caller
+    }
 }
 
 /**
