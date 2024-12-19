@@ -111,6 +111,8 @@ function securelyAuth(methodId, useIframe = true) {
                   height: 100vh;
                 }
                 .auth-container {
+                  width: 100vw;
+                  height: 100vh;
                   border-radius: 0;
                 }
               }
