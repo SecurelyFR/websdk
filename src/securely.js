@@ -177,20 +177,27 @@ function securelyAuth(methodId, useIframe = true) {
         }
 
         function messageHandler(event) {
-            if (event.origin === authUrl) {
-                window.removeEventListener('message', messageHandler);
-
-                if (useIframe) {
-                    const overlay = document.querySelector('.auth-overlay');
-                    document.body.removeChild(overlay);
-                }
-
-                const receivedData = event.data;
-                console.log('Received data from Securely Auth:', receivedData);
-
-                resolve(receivedData);
+            if (event.origin !== authUrl) {
+                return;
             }
-        }
+
+            const receivedData = event.data;
+            console.log('Received data from Securely Auth:', receivedData);
+
+            // Verify if the message is the one expected
+            if (!receivedData || typeof receivedData.token !== 'string') {
+                return;
+            }
+
+            window.removeEventListener('message', messageHandler);
+
+            if (useIframe) {
+                const overlay = document.querySelector('.auth-overlay');
+                document.body.removeChild(overlay);
+            }
+
+            resolve(receivedData.token);
+       }
 
         window.addEventListener('message', messageHandler);
     });
@@ -220,14 +227,7 @@ async function securelyCallAutoAuth(method, endpoint, params, chainId, dAppAddre
         let token = null;
         if (requiresAuth) {
             try {
-                const authData = await securelyAuth(methodId);
-
-                // Validate the received authentication data structure
-                if (!authData || typeof authData.token !== 'string') {
-                    throw new Error("Invalid authentication data received.");
-                }
-
-                token = authData.token;
+                token = await securelyAuth(methodId);
             } catch (authError) {
                 console.error(`Authentication error: ${authError.message}`);
                 throw new Error("Authentication failed. Please try again.");
