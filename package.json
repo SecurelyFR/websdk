@@ -1,6 +1,6 @@
 {
   "name": "@securely.id/websdk",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Securely Web SDK",
   "main": "src/securely.js",
   "types": "types/websdk.d.ts",
